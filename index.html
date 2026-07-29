@@ -271,8 +271,12 @@
           <div class="qtext" id="qtext">Loading…</div>
           <div class="card-controls">
             <button class="btn primary" id="playQBtn">▶ Play question</button>
+            <button class="btn" id="stopBtnFront">■ Stop</button>
           </div>
-          <div class="tap-hint" id="revealHint">tap card to reveal answer</div>
+          <div class="card-controls">
+            <button class="btn" id="seeAnswerBtn">See answer →</button>
+          </div>
+          <div class="tap-hint">tap card to flip</div>
         </div>
         <div class="face back">
           <div class="eyebrow"><span class="cat" id="backCat">—</span><span id="backCount">—</span></div>
@@ -284,7 +288,12 @@
           <div class="formula" id="formulaText"></div>
           <div class="card-controls">
             <button class="btn" id="playABtn">▶ Play answer</button>
+            <button class="btn" id="stopBtnBack">■ Stop</button>
           </div>
+          <div class="card-controls">
+            <button class="btn" id="seeQuestionBtn">← See question</button>
+          </div>
+          <div class="tap-hint">tap card to flip</div>
         </div>
       </div>
     </div>
@@ -363,6 +372,7 @@ let autoplay = false;
 let queue = [];
 let qIndex = 0;
 let revealed = false;
+let showingBack = false;
 let rate = 1.0;
 
 /* ===================== STORAGE ===================== */
@@ -443,11 +453,21 @@ function playAudio(cardId, part, onend){
     el.play().catch(()=>{ document.getElementById('scope').classList.remove('speaking'); if(onend) onend(); });
   }catch(e){ if(onend) onend(); }
 }
+function stopAudio(){
+  if(currentAudio){
+    currentAudio.onended = null;
+    currentAudio.onerror = null;
+    currentAudio.pause();
+    try{ currentAudio.currentTime = 0; }catch(e){}
+  }
+  document.getElementById('scope').classList.remove('speaking');
+}
 
 /* ===================== RENDER ===================== */
 function currentCard(){ return queue[qIndex]; }
 
 function render(){
+  stopAudio();
   const area = document.getElementById('cardArea');
   const c = currentCard();
   if(!c){
@@ -467,6 +487,7 @@ function render(){
   document.getElementById('formulaText').textContent = c.formula;
 
   document.getElementById('card').classList.remove('flipped');
+  showingBack = false;
   revealed = false;
   setRateButtonsEnabled(false);
   renderStats(); renderProgressBar(); renderChips();
@@ -474,17 +495,25 @@ function render(){
   if(autoplay){
     playAudio(c.id, 'q', ()=>{
       setTimeout(()=>{
-        revealCard();
+        showBack();
         playAudio(c.id, 'a');
       }, 700);
     });
   }
 }
 
-function revealCard(){
+function showBack(){
   document.getElementById('card').classList.add('flipped');
+  showingBack = true;
   revealed = true;
   setRateButtonsEnabled(true);
+}
+function showFront(){
+  document.getElementById('card').classList.remove('flipped');
+  showingBack = false;
+}
+function toggleFlip(){
+  if(showingBack) showFront(); else showBack();
 }
 
 function setRateButtonsEnabled(on){
@@ -573,7 +602,7 @@ function animateWave(){
 /* ===================== EVENTS ===================== */
 document.getElementById('card').addEventListener('click', (e)=>{
   if(e.target.closest('button')) return;
-  if(!revealed) revealCard();
+  toggleFlip();
 });
 document.getElementById('playQBtn').addEventListener('click', (e)=>{
   e.stopPropagation();
@@ -582,6 +611,22 @@ document.getElementById('playQBtn').addEventListener('click', (e)=>{
 document.getElementById('playABtn').addEventListener('click', (e)=>{
   e.stopPropagation();
   const c = currentCard(); if(c) playAudio(c.id, 'a');
+});
+document.getElementById('stopBtnFront').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  stopAudio();
+});
+document.getElementById('stopBtnBack').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  stopAudio();
+});
+document.getElementById('seeAnswerBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  showBack();
+});
+document.getElementById('seeQuestionBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  showFront();
 });
 document.getElementById('rateMiss').addEventListener('click', ()=>rate_('miss'));
 document.getElementById('rateShaky').addEventListener('click', ()=>rate_('shaky'));
@@ -601,7 +646,7 @@ document.getElementById('autoplay').addEventListener('change', (e)=>{
   e.target.closest('.toggle').classList.toggle('on', autoplay);
   if(autoplay){
     const c = currentCard();
-    if(c) playAudio(c.id, 'q', ()=>{ setTimeout(()=>{ revealCard(); playAudio(c.id, 'a'); }, 700); });
+    if(c) playAudio(c.id, 'q', ()=>{ setTimeout(()=>{ showBack(); playAudio(c.id, 'a'); }, 700); });
   }
 });
 document.getElementById('rate').addEventListener('input', (e)=>{

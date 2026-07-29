@@ -8,7 +8,7 @@ Works offline after the first load. Progress is saved in your browser. Layout is
 
 ## Use it
 
-Open the site in a browser. Tap a card to flip it and see the answer. Use the play buttons to hear the question or answer again.
+Open the site in a browser. Tap a card to flip between question and answer. Use the play buttons to hear the question or answer, or **Stop** to cut audio. **See answer** and **See question** flip the card without tapping.
 
 After you reveal the answer, rate the card:
 
