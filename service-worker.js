@@ -1,4 +1,4 @@
-const CACHE_NAME = "phys220-flashcards-v2";
+const CACHE_NAME = "phys220-flashcards-v3";
 const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",

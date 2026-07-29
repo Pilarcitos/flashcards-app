@@ -4,7 +4,7 @@ Audio flashcards for PHYS 220. Each card plays a spoken question and answer. You
 
 Topics: Newton's laws and forces, circular motion, work and energy, momentum and impulse. 32 cards total.
 
-Works offline after the first load. Progress is saved in your browser.
+Works offline after the first load. Progress is saved in your browser. Layout is tuned for phones; long cards scroll instead of clipping.
 
 ## Use it
 

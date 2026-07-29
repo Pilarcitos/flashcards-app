@@ -33,6 +33,7 @@
     color:var(--ink);
     font-family:var(--sans);
     min-height:100vh;
+    min-height:100dvh;
     padding:28px 16px 60px;
     display:flex;
     justify-content:center;
@@ -113,14 +114,15 @@
   /* ---------- Card ---------- */
   .stage{ perspective:1400px; margin-bottom:20px; }
   .card{
-    position:relative; min-height:280px;
+    display:grid; min-height:200px;
     transform-style:preserve-3d; transition:transform 0.5s cubic-bezier(.2,.8,.2,1);
   }
   .card.flipped{ transform:rotateY(180deg); }
   .face{
-    position:absolute; inset:0; backface-visibility:hidden;
+    grid-column:1; grid-row:1; backface-visibility:hidden;
     background:var(--panel); border:1px solid var(--line); border-radius:10px;
     padding:26px 24px; display:flex; flex-direction:column;
+    max-height:70vh; overflow-y:auto;
   }
   .face.back{ transform:rotateY(180deg); }
 
@@ -204,6 +206,29 @@
   .footer-note{
     text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--muted);
     margin-top:26px; letter-spacing:0.02em; opacity:0.7;
+  }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 480px){
+    body{ padding:18px 12px 44px; }
+    .header-top{ flex-wrap:wrap; gap:4px; }
+    .brand{ font-size:12px; }
+    .streak{ font-size:12px; }
+    .chips{ gap:6px; margin-bottom:16px; }
+    .chip{ padding:7px 10px; font-size:10.5px; }
+    .toggles{ gap:12px; margin-bottom:18px; }
+    .face{ padding:18px 16px; max-height:75vh; }
+    .qtext{ font-size:17px; }
+    .answer-value{ font-size:17px; }
+    .explain{ font-size:13.5px; }
+    .formula{ font-size:11.5px; word-break:break-word; }
+    .btn{ padding:11px 14px; font-size:12.5px; }
+    .rate-row{ gap:8px; }
+    .rate-btn{ padding:14px 4px; font-size:11px; min-height:44px; }
+    .nav-row{ padding:4px 0; }
+    .nav-btn{ padding:8px 6px; font-size:11px; }
+    .stat-name{ width:112px; font-size:11.5px; }
+    .stat-pct{ width:30px; }
   }
 </style>
 </head>
