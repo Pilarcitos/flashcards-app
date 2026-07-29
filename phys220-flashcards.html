@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHYS 220 · Audio Flashcards</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0D1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PHYS220">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#0D1117;
+    --panel:#161B22;
+    --panel-2:#1C232C;
+    --ink:#E6EDF3;
+    --muted:#7D8590;
+    --trace:#5EEAD4;
+    --trace-dim:rgba(94,234,212,0.14);
+    --warn:#F2A65A;
+    --warn-dim:rgba(242,166,90,0.14);
+    --bad:#F2777A;
+    --line:rgba(230,237,243,0.09);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:28px 16px 60px;
+    display:flex;
+    justify-content:center;
+  }
+  .app{ width:100%; max-width:720px; }
+
+  /* ---------- Header ---------- */
+  .header-top{
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:var(--mono);
+  }
+  .brand{
+    font-size:13px; letter-spacing:0.14em; color:var(--muted); text-transform:uppercase;
+  }
+  .brand b{ color:var(--ink); }
+  .streak{
+    font-size:13px; color:var(--warn); letter-spacing:0.04em;
+  }
+
+  /* ---------- Waveform (signature element) ---------- */
+  .scope{
+    margin:14px 0 18px;
+    height:46px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 23px,
+      var(--panel);
+    position:relative;
+    overflow:hidden;
+  }
+  .scope svg{ width:100%; height:100%; display:block; }
+  .scope path{
+    fill:none;
+    stroke:var(--trace);
+    stroke-width:1.6;
+    stroke-linecap:round;
+    opacity:0.55;
+  }
+  .scope.speaking path{ opacity:1; }
+  .scope-label{
+    position:absolute; top:4px; left:8px;
+    font-family:var(--mono); font-size:10px; letter-spacing:0.1em;
+    color:var(--muted); text-transform:uppercase;
+  }
+
+  /* ---------- Progress bar ---------- */
+  .progress-row{ display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .progress-track{
+    flex:1; height:6px; border-radius:3px; background:var(--panel-2);
+    overflow:hidden; border:1px solid var(--line);
+  }
+  .progress-fill{
+    height:100%; background:var(--trace); border-radius:3px;
+    transition:width 0.4s ease;
+  }
+  .progress-num{ font-family:var(--mono); font-size:12px; color:var(--muted); white-space:nowrap; }
+
+  /* ---------- Filter chips ---------- */
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  .chip{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.04em;
+    padding:6px 11px; border-radius:999px; border:1px solid var(--line);
+    background:var(--panel); color:var(--muted); cursor:pointer;
+    transition:all 0.15s ease; user-select:none;
+  }
+  .chip:hover{ border-color:var(--trace); color:var(--ink); }
+  .chip.active{ background:var(--trace-dim); border-color:var(--trace); color:var(--trace); }
+
+  .toggles{ display:flex; gap:16px; margin-bottom:22px; flex-wrap:wrap; }
+  .toggle{
+    display:flex; align-items:center; gap:8px; font-family:var(--mono);
+    font-size:11.5px; color:var(--muted); cursor:pointer; user-select:none;
+  }
+  .toggle input{ accent-color:var(--trace); width:14px; height:14px; }
+  .toggle.on{ color:var(--trace); }
+
+  /* ---------- Card ---------- */
+  .stage{ perspective:1400px; margin-bottom:20px; }
+  .card{
+    position:relative; min-height:280px;
+    transform-style:preserve-3d; transition:transform 0.5s cubic-bezier(.2,.8,.2,1);
+  }
+  .card.flipped{ transform:rotateY(180deg); }
+  .face{
+    position:absolute; inset:0; backface-visibility:hidden;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:26px 24px; display:flex; flex-direction:column;
+  }
+  .face.back{ transform:rotateY(180deg); }
+
+  .eyebrow{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.12em;
+    color:var(--muted); text-transform:uppercase; margin-bottom:14px;
+    display:flex; justify-content:space-between;
+  }
+  .eyebrow .cat{ color:var(--trace); }
+  .qtext{ font-size:19px; line-height:1.5; flex:1; }
+  .atext-label{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.1em;
+    color:var(--muted); text-transform:uppercase; margin-bottom:6px;
+  }
+  .answer-value{ font-size:19px; font-weight:600; color:var(--trace); margin-bottom:12px; }
+  .explain{ font-size:14.5px; line-height:1.55; color:var(--ink); opacity:0.92; flex:1; }
+  .formula{
+    font-family:var(--mono); font-size:12.5px; color:var(--muted);
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+  }
+
+  .card-controls{ display:flex; gap:10px; margin-top:14px; }
+  .btn{
+    font-family:var(--mono); font-size:12px; letter-spacing:0.04em;
+    padding:9px 14px; border-radius:6px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; gap:7px; transition:all 0.15s ease;
+  }
+  .btn:hover{ border-color:var(--trace); }
+  .btn:active{ transform:scale(0.97); }
+  .btn.primary{ background:var(--trace-dim); border-color:var(--trace); color:var(--trace); }
+  .btn:disabled{ opacity:0.4; cursor:default; }
+
+  .tap-hint{
+    text-align:center; font-family:var(--mono); font-size:11px;
+    color:var(--muted); margin-top:8px; cursor:pointer;
+  }
+
+  /* ---------- Rating row ---------- */
+  .rate-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:24px; }
+  .rate-btn{
+    font-family:var(--mono); font-size:12px; padding:13px 6px; border-radius:8px;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    cursor:pointer; text-align:center; transition:all 0.15s ease;
+  }
+  .rate-btn:hover{ transform:translateY(-1px); }
+  .rate-btn.miss:hover{ border-color:var(--bad); color:var(--bad); }
+  .rate-btn.shaky:hover{ border-color:var(--warn); color:var(--warn); }
+  .rate-btn.nailed:hover{ border-color:var(--trace); color:var(--trace); }
+  .rate-btn:disabled{ opacity:0.35; cursor:default; }
+
+  .nav-row{ display:flex; justify-content:space-between; margin-bottom:30px; }
+  .nav-btn{
+    font-family:var(--mono); font-size:11px; color:var(--muted);
+    background:none; border:none; cursor:pointer; letter-spacing:0.04em;
+  }
+  .nav-btn:hover{ color:var(--ink); }
+
+  /* ---------- Stats ---------- */
+  .stats{
+    border-top:1px solid var(--line); padding-top:20px;
+  }
+  .stats h3{
+    font-family:var(--mono); font-size:11px; letter-spacing:0.12em;
+    color:var(--muted); text-transform:uppercase; margin:0 0 14px;
+  }
+  .stat-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .stat-name{ font-size:12.5px; color:var(--ink); width:150px; flex-shrink:0; }
+  .stat-track{
+    flex:1; height:5px; border-radius:3px; background:var(--panel-2);
+    overflow:hidden; border:1px solid var(--line);
+  }
+  .stat-fill{ height:100%; background:var(--trace); }
+  .stat-pct{ font-family:var(--mono); font-size:11px; color:var(--muted); width:36px; text-align:right; }
+
+  .empty{
+    text-align:center; padding:50px 20px; color:var(--muted); font-size:14px; line-height:1.6;
+  }
+  .empty b{ color:var(--ink); }
+
+  .footer-note{
+    text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--muted);
+    margin-top:26px; letter-spacing:0.02em; opacity:0.7;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header-top">
+    <div class="brand"><b>PHYS 220</b> · Flashcards</div>
+    <div class="streak" id="streakLabel">streak · 0</div>
+  </div>
+
+  <div class="scope" id="scope">
+    <div class="scope-label">audio</div>
+    <svg viewBox="0 0 300 46" preserveAspectRatio="none">
+      <path id="wavePath" d="M0,23 L300,23"/>
+    </svg>
+  </div>
+
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-num" id="progressNum">0 / 0 mastered</div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="toggles">
+    <label class="toggle" id="dueToggleWrap"><input type="checkbox" id="dueOnly"> Due only</label>
+    <label class="toggle" id="autoToggleWrap"><input type="checkbox" id="autoplay"> Autoplay audio</label>
+    <label class="toggle" style="cursor:default;">
+      Speed
+      <input type="range" id="rate" min="0.7" max="1.3" step="0.05" value="1" style="width:70px;">
+    </label>
+  </div>
+
+  <div id="cardArea">
+    <div class="stage">
+      <div class="card" id="card">
+        <div class="face front">
+          <div class="eyebrow"><span class="cat" id="frontCat">—</span><span id="frontCount">—</span></div>
+          <div class="qtext" id="qtext">Loading…</div>
+          <div class="card-controls">
+            <button class="btn primary" id="playQBtn">▶ Play question</button>
+          </div>
+          <div class="tap-hint" id="revealHint">tap card to reveal answer</div>
+        </div>
+        <div class="face back">
+          <div class="eyebrow"><span class="cat" id="backCat">—</span><span id="backCount">—</span></div>
+          <div>
+            <div class="atext-label">Answer</div>
+            <div class="answer-value" id="answerVal">—</div>
+          </div>
+          <div class="explain" id="explainText">—</div>
+          <div class="formula" id="formulaText"></div>
+          <div class="card-controls">
+            <button class="btn" id="playABtn">▶ Play answer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rate-row">
+      <button class="rate-btn miss" id="rateMiss" disabled>✕ Missed it</button>
+      <button class="rate-btn shaky" id="rateShaky" disabled>~ Shaky</button>
+      <button class="rate-btn nailed" id="rateNailed" disabled>✓ Nailed it</button>
+    </div>
+
+    <div class="nav-row">
+      <button class="nav-btn" id="prevBtn">← previous</button>
+      <button class="nav-btn" id="resetBtn">reset all progress</button>
+      <button class="nav-btn" id="nextBtn">skip →</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <h3>Mastery by topic</h3>
+    <div id="statList"></div>
+  </div>
+
+  <div class="footer-note">progress saves automatically · runs entirely in this browser tab</div>
+</div>
+
+<script>
+/* ===================== CARD DATA ===================== */
+const CARDS = [
+  {id:1, cat:"Newton", q:"The apparent weight of a fish in an elevator is greatest when the elevator...", a:"Accelerates upward", explain:"Stand on a scale in an elevator. When it suddenly shoots upward, you feel squished into the floor a bit more than normal, because the floor isn't just holding you up against gravity anymore, it's also giving you the extra push needed to speed you up along with the elevator. That's what makes the scale read a bigger number. Speeding up while going down does the opposite, you feel lighter.", formula:"N = m(g + a)"},
+  {id:2, cat:"Newton", q:"A box sits on level ground and an identical box sits on a 30 degree ramp. Compare the normal force on each.", a:"Flat ground: N = mg. Ramp: N = mg cos(30°)", explain:"Picture a book flat on a table. The table pushes straight up just hard enough to hold the whole weight of the book. Now tilt the table into a ramp. Gravity still pulls the book straight down, but the ramp only fights the part of that pull heading directly into its surface, not all of it. The rest tries to slide the book down the slope instead. So a tilted surface always pushes back less than a flat one, and steeper ramps push back even less.", formula:"N_ramp = mg · cos(θ)"},
+  {id:3, cat:"Newton", q:"A weight hangs from two cables. One makes 30 degrees with vertical, the other makes 60 degrees with vertical. Which tension is bigger?", a:"T1, the 30 degree cable, is bigger", explain:"Imagine two friends holding a heavy backpack with ropes, one pointing almost straight up, one pointing more sideways. The sideways rope is bad at holding weight up directly, so its sideways pull has to be matched by the other rope's own sideways pull. Since the more vertical rope contributes less sideways pull per unit of tension, it actually needs to pull harder overall to balance things out.", formula:"T1·sin30° = T2·sin60° → T1 = 1.73·T2"},
+  {id:4, cat:"Newton", q:"Two bodies collide in two different scenarios. Compare the force each exerts on the other.", a:"Equal and opposite in both cases, no matter the details", explain:"Two kids on skateboards push off each other. No matter how hard or gentle the push, no matter how different in size the kids are, the push each one feels back is always exactly as strong as the push they gave. Same for any collision, gentle or violent, equal masses or not, the two forces are always a perfectly matched pair.", formula:"F(A on B) = −F(B on A), always"},
+  {id:5, cat:"Newton", q:"Two masses hang over a pulley: 3 kilograms and 5 kilograms. Find the acceleration of the system.", a:"About 2.45 meters per second squared", explain:"The heavier mass wins a mini tug of war and pulls the string its way, but it isn't free to just fall on its own, it's tied to the lighter mass on the other side. So the whole system speeds up slower than if the heavy one had simply been dropped alone.", formula:"a = (m2−m1)g / (m1+m2)"},
+  {id:6, cat:"Newton", q:"A 20 kilogram box is pushed up a 25 degree ramp at constant velocity, with a friction coefficient of 0.2. Find the applied force.", a:"About 118 newtons", explain:"To keep something moving at a steady pace, not speeding up or slowing down, your push has to exactly cancel out two things trying to stop it: gravity pulling it back down the slope, and friction dragging against its motion.", formula:"F = mg(sin25° + 0.2cos25°)"},
+  {id:7, cat:"Newton", q:"A box sits on a truck bed accelerating forward at 3 meters per second squared. What's the minimum friction coefficient needed to keep it from sliding?", a:"About 0.31", explain:"The box doesn't speed up on its own just because the truck does, friction is what grabs it and drags it along for the ride. If the truck bed isn't grippy enough, the box slides backward relative to the truck.", formula:"μₛ = a / g"},
+  {id:8, cat:"Newton", q:"A picture frame hangs from two wires, each at 40 degrees from horizontal. Find the tension in each wire.", a:"About 45.7 newtons each", explain:"Since both wires are angled the same way, they split the job evenly, each one holds up exactly half the weight's vertical support, adjusted for the angle.", formula:"T = mg / (2sin40°)"},
+  {id:9, cat:"Newton", q:"A block on an incline just starts sliding at 32 degrees. Find the coefficient of static friction.", a:"About 0.625", explain:"Tilt a ramp more and more, and at some point gravity's pull down the slope wins over friction's grip. That exact tipping point angle tells you exactly how grippy, or slippery, the surface is.", formula:"μₛ = tan(32°)"},
+  {id:10, cat:"Newton", q:"A horse pulls a cart. By Newton's third law, the cart pulls back on the horse just as hard. Why does the system still move forward?", a:"Because the ground pushes the horse forward harder than the cart pulls it back", explain:"Yes, the cart pulls back on the horse exactly as hard as the horse pulls the cart, that pair always matches. But that's not the only push happening. The horse also pushes backward against the ground with its hooves, and the ground pushes the horse forward, harder than the cart pulls back. That ground push is a completely different pair of forces, and it's the one that actually gets things rolling.", formula:"(conceptual — no single formula)"},
+
+  {id:11, cat:"Circular", q:"A student sits on the right side of a bus making a right turn. What extra force must exist on the student?", a:"A force parallel to the seat, pointed to the right", explain:"Notice how your body seems to lean the wrong way when a car turns? That's your body trying to keep going straight, since that's what things naturally want to do, while the car curves around you. For you to actually turn along with the bus instead of sliding into the door, something, the seat, a seatbelt, friction, has to push you toward the inside of the curve. If the bus turns right, that push has to point right too.", formula:"F = mv²/r, toward the center"},
+  {id:12, cat:"Circular", q:"Find the banking angle so a car can round a 200 meter curve at 25 meters per second with no reliance on friction.", a:"About 17.7 degrees", explain:"Racetracks tilt their curves so the road itself helps aim part of gravity sideways, toward the center of the turn, instead of making the tires do all the gripping work.", formula:"tan(θ) = v² / (rg)"},
+  {id:13, cat:"Circular", q:"A ball on a half meter string swings in a vertical circle. Find the minimum speed at the top so the string doesn't go slack.", a:"About 2.21 meters per second", explain:"Swing a bucket of water fast enough over your head and the water stays in, even upside down, because gravity is exactly enough to keep it curving around instead of falling straight out. Too slow, and it spills, because gravity pulls it down faster than the circle curves.", formula:"v_min = √(gr)"},
+  {id:14, cat:"Circular", q:"A ball swings in a horizontal circle on a string. The string snaps. Which direction does the ball fly off?", a:"Straight, in the direction it was already moving at that instant", explain:"Whatever direction the ball is moving right at the instant the string lets go is the direction it keeps going, straight, like a rock flying out of a slingshot the moment you let go. It does not fly straight outward from the center, that's the common wrong guess.", formula:"(tangent to the circle at release)"},
+  {id:15, cat:"Circular", q:"Derive the orbital speed of a satellite at radius r around a planet of mass M.", a:"v equals the square root of GM over r", explain:"Satellites don't have a string holding them, gravity itself acts as the string. Gravity's pull has to exactly match how fast the satellite needs to be curving to stay in a circle instead of falling in or drifting away.", formula:"v = √(GM/r)"},
+
+  {id:16, cat:"Energy", q:"Same force, same mass, both carts start at rest. Force applied to cart A for twice as long as cart B. Compare the work done.", a:"Work on A is 4 times work on B", explain:"Push a toy car for one second, then push it with the exact same push for two seconds instead. It doesn't just go twice as far, it goes way more than double, because the longer you push, the faster it's already going, so each extra bit of time covers more ground than the bit before. Since work depends on distance too, doubling the push time quadruples the total work.", formula:"W ∝ t²"},
+  {id:17, cat:"Energy", q:"A mass on a spring is pulled out and released on a surface with friction. Compare the sign of the work done by the spring to the energy lost to friction.", a:"They match in sign for only half of each cycle", explain:"Picture bouncing a ball on a rug instead of a smooth floor. The rug, friction, always steals a little energy no matter which way the ball is moving, every single time. But the spring is different, sometimes it gives the mass a boost, when swinging back toward the middle, and sometimes it takes energy away, when stretching back out. So sometimes they're both taking energy away at once, matching signs, and sometimes the spring is giving while friction is still taking, opposite signs.", formula:"(conceptual — no single formula)"},
+  {id:18, cat:"Energy", q:"In a frictionless displacement, kinetic energy increases by 25 joules while potential energy decreases by 10 joules. Find the work done by nonconservative forces.", a:"15 joules", explain:"Imagine rolling a ball while someone also gives it a little push with their hand. The ball speeds up, and it might also roll downhill a bit, using up some height. Add the sped up energy and subtract the free energy from rolling downhill, and whatever's left had to come from that hand push. Here that leftover push energy is 15 joules, even on a frictionless surface, because a push from something other than gravity still counts.", formula:"W_nc = ΔKE + ΔPE"},
+  {id:19, cat:"Energy", q:"A spring with stiffness 400 newtons per meter is compressed from 0 to 0.1 meters, then further to 0.2 meters. Compare the work needed for each stage.", a:"2 joules for the first stage, 6 more joules for the second stage", explain:"Squishing a spring gets harder and harder the more you squish it. So squishing it twice as far takes way more than double the effort, the second half of the squish is tougher than the first half.", formula:"U = ½kx²"},
+  {id:20, cat:"Energy", q:"A ball starts from rest at 5 meters high on a frictionless track and goes around a 1 meter radius loop. Find its speed at the top, and check if it makes it around.", a:"About 7.67 meters per second, yes it makes it around", explain:"Like a marble run needing enough starting height to make it through a loop without falling off partway. Drop from high enough and there's plenty of speed left at the top to keep curving instead of dropping straight down.", formula:"v_top = √(2g(h−2r))"},
+  {id:21, cat:"Energy", q:"A 60 kilogram person climbs a 4 meter ladder in 5 seconds. Find the average power output.", a:"About 470 watts", explain:"Power is how fast you get work done. Climbing the same ladder in less time takes more power, even though the total effort is exactly the same either way.", formula:"P = mgh / t"},
+  {id:22, cat:"Energy", q:"A 5 kilogram block starts from rest and slides 3 meters down a 20 degree incline with a friction coefficient of 0.15. Find its final kinetic energy.", a:"About 29.5 joules", explain:"Gravity speeds the block up as it slides down, but the roughness of the ramp fights back and steals some of that speeding up. Whatever's left over becomes the block's actual final speed energy.", formula:"KE_f = (mg·sinθ − μmg·cosθ)·d"},
+  {id:23, cat:"Energy", q:"A spring with stiffness 500 newtons per meter is compressed 0.15 meters and launches a 0.3 kilogram ball straight up. Find the max height.", a:"About 1.91 meters", explain:"Squish a spring hard, let go, and it flings something upward. All that squished up spring energy turns into height, the harder you squish, the higher it flies.", formula:"h = ½kx² / mg"},
+  {id:24, cat:"Energy", q:"Which forces do zero work: the normal force on a block sliding horizontally, tension on a ball in horizontal circular motion, or kinetic friction on a sliding block?", a:"The normal force and the tension, both do zero work", explain:"Pushing sideways on something moving forward does literally nothing to speed it up or slow it down, since the push and the motion are at right angles to each other. It's like pushing straight down on a rolling ball on a flat table, it doesn't make the ball go faster or slower at all. Friction is different, it directly opposes the motion, so it does real work.", formula:"W = Fd·cos(θ), zero when θ = 90°"},
+
+  {id:25, cat:"Momentum", q:"Car 1 moves at velocity v, car 2 is parked. Find the total momentum of the two car system.", a:"m1 times v", explain:"If one car is zooming along and the other is just sitting there like a rock, the parked car adds zero oomph to the group. So the whole group's oomph is just whatever the moving car has, by itself.", formula:"p = m1v1 + m2v2, with v2 = 0"},
+  {id:26, cat:"Momentum", q:"If you know the impulse that acted on a body of mass m, what can you calculate?", a:"The change in its velocity", explain:"Say you know exactly how hard and how long something got shoved, that's the total shove. That tells you how much its speed changed, like knowing it sped up by a certain amount. But it doesn't tell you what speed it started at or ended at on its own, just the size of the jump between the two.", formula:"Δv = J / m"},
+  {id:27, cat:"Momentum", q:"Cart A, 3 kilograms at 4 meters per second, collides and sticks to cart B, 2 kilograms at rest. Find the final velocity and the kinetic energy lost.", a:"2.4 meters per second, and 9.6 joules lost", explain:"Two carts crash and stick together like velcro. They end up moving together at some medium speed, and a chunk of their original moving energy disappears into the crash itself, heat, sound, bent metal.", formula:"v_f = m1v1 / (m1+m2)"},
+  {id:28, cat:"Momentum", q:"Ball A, mass m and velocity v, elastically collides head on with a stationary ball B of the same mass. Find both final velocities.", a:"Ball A stops, ball B moves off with velocity v", explain:"Like a perfect shot in pool, one ball hits a same size resting ball dead on, and the moving ball stops completely while the one that got hit takes off with all the original speed, like they swapped their motion.", formula:"(velocities exchange for equal masses)"},
+  {id:29, cat:"Momentum", q:"A 2 kilogram firework at rest explodes into a 0.5 kilogram piece moving at 40 meters per second, and a 1.5 kilogram piece. Find the second piece's velocity.", a:"About negative 13.3 meters per second, meaning the opposite direction", explain:"Think of someone jumping backward off a skateboard, whichever way one piece flies off fast, the other piece has to fly the opposite way to keep everything balanced, like a seesaw of motion.", formula:"0 = m1v1 + m2v2"},
+  {id:30, cat:"Momentum", q:"A 4 kilogram mass sits at position 0, a 6 kilogram mass sits at position 5 meters. Find the center of mass.", a:"3 meters", explain:"Think of a seesaw with a light kid and a heavy kid, the balance point isn't in the middle, it's closer to the heavier kid. Center of mass is finding that exact balance point for a group of masses.", formula:"x_cm = (m1x1+m2x2)/(m1+m2)"},
+  {id:31, cat:"Momentum", q:"A force rises from 0 to 300 newtons over 0.02 seconds, then falls back to 0 over another 0.02 seconds, acting on a 0.4 kilogram object at rest. Find the final velocity.", a:"15 meters per second", explain:"Even if a push isn't constant, ramping up then ramping back down, you can add up its total effect over time, the area of the push, and that total effect changes the object's speed the same way a steady push would.", formula:"J = ½·base·height of the F-t graph"},
+  {id:32, cat:"Momentum", q:"Two 2 kilogram clay balls move toward each other at 3 meters per second each and stick together. Find the final velocity and compare kinetic energy before and after.", a:"Final velocity is zero, and all 18 joules of kinetic energy is lost", explain:"Two matching balls of clay flying at each other at the same speed crash and stick, everything just stops dead. All that moving energy turns into smashed warm clay instead of continuing on as motion. But the total push balance was zero to begin with, since they were headed opposite ways with equal amounts, so it's still perfectly balanced at zero, both before and after.", formula:"p_total = 0 before and after; KE: 18 J → 0 J"},
+];
+
+const CATEGORIES = ["All","Newton","Circular","Energy","Momentum"];
+const CAT_LABELS = {All:"All", Newton:"Newton's Laws & Forces", Circular:"Circular Motion", Energy:"Work & Energy", Momentum:"Momentum & Impulse"};
+const INTERVAL_DAYS = {1:0, 2:1, 3:3, 4:7, 5:14};
+
+/* ===================== STATE ===================== */
+let progress = {};           // { [id]: {box, lastSeen, correct, wrong, seen} }
+let meta = { streak:0, lastStudyDate:null };
+let activeCat = "All";
+let dueOnly = false;
+let autoplay = false;
+let queue = [];
+let qIndex = 0;
+let revealed = false;
+let rate = 1.0;
+
+/* ===================== STORAGE ===================== */
+async function loadState(){
+  try{
+    const r = await window.storage.get('phys220-progress', false);
+    progress = r && r.value ? JSON.parse(r.value) : {};
+  }catch(e){ progress = {}; }
+  try{
+    const r = await window.storage.get('phys220-meta', false);
+    meta = r && r.value ? JSON.parse(r.value) : {streak:0,lastStudyDate:null};
+  }catch(e){ meta = {streak:0,lastStudyDate:null}; }
+
+  CARDS.forEach(c=>{
+    if(!progress[c.id]) progress[c.id] = {box:1, lastSeen:null, correct:0, wrong:0, seen:0};
+  });
+}
+async function saveProgress(){
+  try{ await window.storage.set('phys220-progress', JSON.stringify(progress), false); }catch(e){}
+}
+async function saveMeta(){
+  try{ await window.storage.set('phys220-meta', JSON.stringify(meta), false); }catch(e){}
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function daysSince(dateStr){
+  if(!dateStr) return Infinity;
+  const then = new Date(dateStr+"T00:00:00");
+  const now = new Date(todayStr()+"T00:00:00");
+  return Math.round((now-then)/86400000);
+}
+function isDue(c){
+  const p = progress[c.id];
+  if(!p.lastSeen) return true;
+  return daysSince(p.lastSeen) >= INTERVAL_DAYS[p.box];
+}
+function bumpStreak(){
+  const today = todayStr();
+  if(meta.lastStudyDate === today) return;
+  if(meta.lastStudyDate && daysSince(meta.lastStudyDate) === 1){
+    meta.streak += 1;
+  } else {
+    meta.streak = 1;
+  }
+  meta.lastStudyDate = today;
+  saveMeta();
+}
+
+/* ===================== QUEUE BUILDING ===================== */
+function buildQueue(){
+  let pool = CARDS.filter(c => activeCat==="All" || c.cat===activeCat);
+  if(dueOnly) pool = pool.filter(isDue);
+  // weakest / most overdue first
+  pool = pool.slice().sort((a,b)=>{
+    const pa = progress[a.id], pb = progress[b.id];
+    const scoreA = (pa.lastSeen ? daysSince(pa.lastSeen) - INTERVAL_DAYS[pa.box] : 999) - pa.box;
+    const scoreB = (pb.lastSeen ? daysSince(pb.lastSeen) - INTERVAL_DAYS[pb.box] : 999) - pb.box;
+    return scoreB - scoreA;
+  });
+  queue = pool;
+  qIndex = 0;
+}
+
+/* ===================== AUDIO (pre-recorded natural voice files) ===================== */
+let currentAudio = null;
+function audioPath(cardId, part){
+  const n = String(cardId).padStart(2,'0');
+  return `phys220-audio/${n}_${part}.mp3`;
+}
+function playAudio(cardId, part, onend){
+  try{
+    if(currentAudio){ currentAudio.pause(); currentAudio.onended = null; currentAudio.onerror = null; }
+    const el = new Audio(audioPath(cardId, part));
+    el.playbackRate = rate;
+    currentAudio = el;
+    el.onplay = ()=> document.getElementById('scope').classList.add('speaking');
+    el.onended = ()=>{ document.getElementById('scope').classList.remove('speaking'); if(onend) onend(); };
+    el.onerror = ()=>{ document.getElementById('scope').classList.remove('speaking'); if(onend) onend(); };
+    el.play().catch(()=>{ document.getElementById('scope').classList.remove('speaking'); if(onend) onend(); });
+  }catch(e){ if(onend) onend(); }
+}
+
+/* ===================== RENDER ===================== */
+function currentCard(){ return queue[qIndex]; }
+
+function render(){
+  const area = document.getElementById('cardArea');
+  const c = currentCard();
+  if(!c){
+    area.innerHTML = `<div class="empty">Nothing ${dueOnly ? "due" : "here"} right now for <b>${CAT_LABELS[activeCat]}</b>.<br>` +
+      (dueOnly ? `Turn off <b>Due only</b> to keep practicing, or come back later." ` : `Try a different topic filter.`) +
+      `</div>`;
+    renderStats(); renderProgressBar(); renderChips();
+    return;
+  }
+  document.getElementById('frontCat').textContent = CAT_LABELS[c.cat];
+  document.getElementById('backCat').textContent = CAT_LABELS[c.cat];
+  document.getElementById('frontCount').textContent = `#${qIndex+1} / ${queue.length}`;
+  document.getElementById('backCount').textContent = `#${qIndex+1} / ${queue.length}`;
+  document.getElementById('qtext').textContent = c.q;
+  document.getElementById('answerVal').textContent = c.a;
+  document.getElementById('explainText').textContent = c.explain;
+  document.getElementById('formulaText').textContent = c.formula;
+
+  document.getElementById('card').classList.remove('flipped');
+  revealed = false;
+  setRateButtonsEnabled(false);
+  renderStats(); renderProgressBar(); renderChips();
+
+  if(autoplay){
+    playAudio(c.id, 'q', ()=>{
+      setTimeout(()=>{
+        revealCard();
+        playAudio(c.id, 'a');
+      }, 700);
+    });
+  }
+}
+
+function revealCard(){
+  document.getElementById('card').classList.add('flipped');
+  revealed = true;
+  setRateButtonsEnabled(true);
+}
+
+function setRateButtonsEnabled(on){
+  ["rateMiss","rateShaky","rateNailed"].forEach(id=>{
+    document.getElementById(id).disabled = !on;
+  });
+}
+
+function renderChips(){
+  const wrap = document.getElementById('chips');
+  wrap.innerHTML = "";
+  CATEGORIES.forEach(cat=>{
+    const el = document.createElement('div');
+    el.className = 'chip' + (cat===activeCat ? ' active' : '');
+    el.textContent = CAT_LABELS[cat];
+    el.onclick = ()=>{ activeCat = cat; buildQueue(); render(); };
+    wrap.appendChild(el);
+  });
+}
+
+function renderProgressBar(){
+  const total = CARDS.length;
+  const mastered = CARDS.filter(c=>progress[c.id].box>=5).length;
+  document.getElementById('progressFill').style.width = (mastered/total*100)+"%";
+  document.getElementById('progressNum').textContent = `${mastered} / ${total} mastered`;
+  document.getElementById('streakLabel').textContent = `streak · ${meta.streak}`;
+}
+
+function renderStats(){
+  const wrap = document.getElementById('statList');
+  wrap.innerHTML = "";
+  ["Newton","Circular","Energy","Momentum"].forEach(cat=>{
+    const cards = CARDS.filter(c=>c.cat===cat);
+    const total = cards.length;
+    const sum = cards.reduce((s,c)=>s+progress[c.id].box,0);
+    const pct = Math.round((sum/(total*5))*100);
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    row.innerHTML = `<div class="stat-name">${CAT_LABELS[cat]}</div>
+      <div class="stat-track"><div class="stat-fill" style="width:${pct}%"></div></div>
+      <div class="stat-pct">${pct}%</div>`;
+    wrap.appendChild(row);
+  });
+}
+
+/* ===================== RATING / ADVANCE ===================== */
+function rate_(kind){
+  const c = currentCard();
+  if(!c) return;
+  const p = progress[c.id];
+  p.seen += 1;
+  p.lastSeen = todayStr();
+  if(kind==='miss'){ p.box = 1; p.wrong += 1; }
+  else if(kind==='shaky'){ p.correct += 1; }
+  else if(kind==='nailed'){ p.box = Math.min(5, p.box+1); p.correct += 1; }
+  saveProgress();
+  bumpStreak();
+  advance();
+}
+function advance(){
+  qIndex += 1;
+  if(qIndex >= queue.length){ buildQueue(); }
+  render();
+}
+
+/* ===================== WAVEFORM ANIMATION ===================== */
+function animateWave(){
+  const path = document.getElementById('wavePath');
+  const scope = document.getElementById('scope');
+  let t = 0;
+  setInterval(()=>{
+    t += 0.18;
+    if(scope.classList.contains('speaking')){
+      let d = "M0,23 ";
+      for(let x=0; x<=300; x+=10){
+        const y = 23 + Math.sin(x*0.09 + t)*14*Math.sin(t*0.6+1);
+        d += `L${x},${y.toFixed(1)} `;
+      }
+      path.setAttribute('d', d);
+    } else {
+      path.setAttribute('d', "M0,23 L300,23");
+    }
+  }, 60);
+}
+
+/* ===================== EVENTS ===================== */
+document.getElementById('card').addEventListener('click', (e)=>{
+  if(e.target.closest('button')) return;
+  if(!revealed) revealCard();
+});
+document.getElementById('playQBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const c = currentCard(); if(c) playAudio(c.id, 'q');
+});
+document.getElementById('playABtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const c = currentCard(); if(c) playAudio(c.id, 'a');
+});
+document.getElementById('rateMiss').addEventListener('click', ()=>rate_('miss'));
+document.getElementById('rateShaky').addEventListener('click', ()=>rate_('shaky'));
+document.getElementById('rateNailed').addEventListener('click', ()=>rate_('nailed'));
+document.getElementById('nextBtn').addEventListener('click', advance);
+document.getElementById('prevBtn').addEventListener('click', ()=>{
+  qIndex = Math.max(0, qIndex-1);
+  render();
+});
+document.getElementById('dueOnly').addEventListener('change', (e)=>{
+  dueOnly = e.target.checked;
+  e.target.closest('.toggle').classList.toggle('on', dueOnly);
+  buildQueue(); render();
+});
+document.getElementById('autoplay').addEventListener('change', (e)=>{
+  autoplay = e.target.checked;
+  e.target.closest('.toggle').classList.toggle('on', autoplay);
+  if(autoplay){
+    const c = currentCard();
+    if(c) playAudio(c.id, 'q', ()=>{ setTimeout(()=>{ revealCard(); playAudio(c.id, 'a'); }, 700); });
+  }
+});
+document.getElementById('rate').addEventListener('input', (e)=>{
+  rate = parseFloat(e.target.value);
+  if(currentAudio) currentAudio.playbackRate = rate;
+});
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if(!confirm("Reset all flashcard progress? This can't be undone.")) return;
+  CARDS.forEach(c=>{ progress[c.id] = {box:1, lastSeen:null, correct:0, wrong:0, seen:0}; });
+  meta = {streak:0, lastStudyDate:null};
+  await saveProgress(); await saveMeta();
+  buildQueue(); render();
+});
+
+/* ===================== INIT ===================== */
+(async function init(){
+  await loadState();
+  buildQueue();
+  render();
+  animateWave();
+})();
+
+/* ===================== PWA / OFFLINE SUPPORT ===================== */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {
+      /* fails silently when opened as a plain file:// page, or over plain http */
+    });
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "PHYS 220 Audio Flashcards",
+  "short_name": "PHYS220",
+  "description": "Offline audio flashcards for PHYS 220 - Newton's Laws, Circular Motion, Work and Energy, Momentum",
+  "start_url": "./phys220-flashcards.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
